@@ -328,3 +328,37 @@ def compute_link_prop(g,g_D):
         
         ite +=1
     return g
+
+
+
+
+
+def measures(df_edges_calls,XX):
+
+    df_edges_calls_shuffled = df_edges_calls
+
+    g_calls_shuffled,g_D_calls_shuffled = to_graph(df_edges_calls_shuffled,'from','to','t_second','t_minutes','t_hours','t_days')
+    REC_shuffled,REC_no_reciprocity_shuffled = compute_rec(g_calls_shuffled,g_D_calls_shuffled)
+    N_ev_rec_shuffled, N_reciprocity_shuffled = distribution_rec_interevent(REC_shuffled,g_calls_shuffled)
+
+    node_list_1,node_list_2 = run_dist_node_intertime(g_D_calls_shuffled)
+    L_sec_nodes_shuffled = node_list_1[0]
+
+    edge_list_1 = run_dist_edges_intertime(REC_no_reciprocity_shuffled)
+    L_sec_edges_shuffled = edge_list_1[0]
+
+    results = {}
+    results['Method'] = XX
+    # PROBA TO HAVE A RECIPROCAL LINK
+    results['P(l_rec)'] = proba_reciprocal_link(REC_shuffled,g_D_calls_shuffled,g_calls_shuffled)
+    # PROBA TO HAVE A RECIPROCAL EVENT
+    results['P(E_rec)'] = proba_reciprocal_event(g_D_calls_shuffled,g_calls_shuffled,N_reciprocity_shuffled)
+    # BURSTINESS FROM NODES POINT OF VIEW
+    results['B_nodes'] = burstiness(L_sec_nodes_shuffled)
+    # BURSTINESS FROM EDGES POINT OF VIEW
+    results['B_edges'] = burstiness(L_sec_edges_shuffled)
+        
+    
+    results_df = pd.DataFrame.from_records([results])
+    results_df.set_index("Method", inplace = True)
+    return results_df 
