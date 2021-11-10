@@ -11,6 +11,58 @@ import sys
 import collections
 import csv
 
+
+
+
+# FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
+
+def to_graph(df_edges,from_ ,to,sec,minutes, hours, days):
+    
+    # Edge list
+    elist =np.array(df_edges)#
+    #np.array(list(zip(df_edges[from_],df_edges[to],df_edges[sec],df_edges[minutes],df_edges[hours],df_edges[days])))
+
+    # Building the UNdirected network
+    g = Graph(directed=False)
+    
+    #ts_sec = g.new_ep("double")
+    #ts_min = g.new_ep("double")
+    #ts_h = g.new_ep("double")
+    #ts_days = g.new_ep("double")
+    vlabel = g.add_edge_list(elist, hashed=True)#, eprops=[ts_sec,ts_min,ts_h,ts_days])
+
+    graph_tool.stats.remove_self_loops(g)  #removing self loops 
+    graph_tool.stats.remove_parallel_edges(g) #and multiple edge
+    
+    #g.ep["ts_sec"] = ts_sec
+    #g.ep["ts_min"] = ts_min
+    #g.ep["ts_h"] = ts_h
+    #g.ep["ts_days"] = ts_days
+    #g.vp["label"] = vlabel
+    
+    ############- Directed 
+    g_D = Graph(directed=True)
+    
+    ts_sec = g_D.new_ep("double")
+    ts_min = g_D.new_ep("double")
+    ts_h = g_D.new_ep("double")
+    ts_days = g_D.new_ep("double")
+
+    vlabel = g_D.add_edge_list(elist, hashed=True, eprops=[ts_sec,ts_min,ts_h,ts_days])
+    
+    graph_tool.stats.remove_self_loops(g_D)  #removing self loops 
+    
+    g_D.ep["ts_sec"] = ts_sec
+    g_D.ep["ts_min"] = ts_min
+    g_D.ep["ts_h"] = ts_h
+    g_D.ep["ts_days"] = ts_days
+    g_D.vp["label"] = vlabel
+
+    return(g,g_D)
+
+
+
+
 # RECIPROCAL EVENTS
 #____________________
 
@@ -333,32 +385,65 @@ def compute_link_prop(g,g_D):
 
 
 
-def measures(df_edges_calls,XX):
+def measures(df_edges,XX):
 
-    df_edges_calls_shuffled = df_edges_calls
+    
 
-    g_calls_shuffled,g_D_calls_shuffled = to_graph(df_edges_calls_shuffled,'from','to','t_second','t_minutes','t_hours','t_days')
-    REC_shuffled,REC_no_reciprocity_shuffled = compute_rec(g_calls_shuffled,g_D_calls_shuffled)
-    N_ev_rec_shuffled, N_reciprocity_shuffled = distribution_rec_interevent(REC_shuffled,g_calls_shuffled)
+    g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
+    
+        
+    # Do stuff on nodes
+    g = rec_nodes(g_D,g)
+    g = burst_rec_nodes(g_D,g)
+    g = burst_no_rec_nodes(g_D,g)
+    g = burst_nodes(g_D,g)
+    
+    # Do stuff on edges
+    g= compute_link_prop(g,g_D)
+        
+        # FILTERING
+    #-------------------------------------
+    
+    # a. (node filtering) Removing nodes with no reciprocal ecents
+    g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)
+    
+    # b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
+    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] != 1.0)
+    
+    
+    # OLDD OKK ??? 
+    #Filtering in and out degree (keep only nodes with degree >=1)
+    #g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
+    #g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
 
-    node_list_1,node_list_2 = run_dist_node_intertime(g_D_calls_shuffled)
-    L_sec_nodes_shuffled = node_list_1[0]
-
-    edge_list_1 = run_dist_edges_intertime(REC_no_reciprocity_shuffled)
-    L_sec_edges_shuffled = edge_list_1[0]
-
+    
+    #-------------------------------------
+    DATA = {}
+    DATA['Nber_events'] = sum([g_filt.ep.n_events[v] for v in g_filt.edges()])
+    DATA['Nber_links'] = g_filt.num_edges()
+    DATA['Nber_nodes'] = g_filt.num_vertices() 
+    
+    DATA['Proba_rec_event'] = np.mean([g_filt.ep.p_Erec[v] for v in g_filt.edges()])
+    DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
+    
+    DATA['Burst_nodes'] = np.mean([g_filt.vp.burst[v] for v in g_filt.vertices()])
+    DATA['Burst_edges'] = np.mean([g_filt.ep.burts[e] for e in g_filt.edges()])
+    
+#_______________________
+    
     results = {}
     results['Method'] = XX
     # PROBA TO HAVE A RECIPROCAL LINK
-    results['P(l_rec)'] = proba_reciprocal_link(REC_shuffled,g_D_calls_shuffled,g_calls_shuffled)
+    results['P(l_rec)'] = DATA['Proba_rec_edge']
     # PROBA TO HAVE A RECIPROCAL EVENT
-    results['P(E_rec)'] = proba_reciprocal_event(g_D_calls_shuffled,g_calls_shuffled,N_reciprocity_shuffled)
+    results['P(E_rec)'] = DATA['Proba_rec_event']
     # BURSTINESS FROM NODES POINT OF VIEW
-    results['B_nodes'] = burstiness(L_sec_nodes_shuffled)
+    results['B_nodes'] = DATA['Burst_nodes']
     # BURSTINESS FROM EDGES POINT OF VIEW
-    results['B_edges'] = burstiness(L_sec_edges_shuffled)
+    results['B_edges'] = DATA['Burst_edges']
         
     
     results_df = pd.DataFrame.from_records([results])
     results_df.set_index("Method", inplace = True)
+    
     return results_df 
