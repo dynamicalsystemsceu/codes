@@ -107,7 +107,7 @@ def rec_nodes(g_D,g):
         
         for neighbor in neighbors:
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[5])
+            events_node_nei = sorted(events[rows], key = lambda x: x[2])
             
             binary_rec = [0 if events_node_nei[k][0]==events_node_nei[k+1][0] 
                           else 1 for k in range(len(events_node_nei)-1)].count(1)
@@ -177,9 +177,9 @@ def burst_rec_nodes(g_D,g):
     
         for neighbor in g.get_all_neighbors(node):
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[5])
+            events_node_nei = sorted(events[rows], key = lambda x: x[2])
             
-            intertime_rec = [events_node_nei[k+1][5]-events_node_nei[k][5]
+            intertime_rec = [events_node_nei[k+1][2]-events_node_nei[k][2]
                              for k in range(len(events_node_nei)-1) if
                              events_node_nei[k][0]!=events_node_nei[k+1][0]]
             
@@ -222,9 +222,9 @@ def burst_no_rec_nodes(g_D,g):
         for neighbor in g.get_all_neighbors(node):
         
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[5])
+            events_node_nei = sorted(events[rows], key = lambda x: x[2])
             
-            intertime_no_rec = [events_node_nei[k+1][5]-events_node_nei[k][5] 
+            intertime_no_rec = [events_node_nei[k+1][2]-events_node_nei[k][2] 
                                for k in range(len(events_node_nei)-1) 
                                  if events_node_nei[k][0]==events_node_nei[k+1][0]]
             
@@ -264,9 +264,9 @@ def burst_nodes(g_D,g):
         for neighbor in g.get_all_neighbors(node):
         
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[5])
-            
-            intertime = [events_node_nei[k+1][5]-events_node_nei[k][5] 
+            events_node_nei = sorted(events[rows], key = lambda x: x[2])
+#             print(events[rows],'\n lalalalallala')
+            intertime = [events_node_nei[k+1][2]-events_node_nei[k][2] 
                          for k in range(len(events_node_nei)-1)]
             
             list_burstiness += intertime
@@ -275,7 +275,6 @@ def burst_nodes(g_D,g):
         g.vp.burst[node] = burstiness(list_burstiness)
         
         g.vp.intertime[node] = np.array(node_intertimes)
-        
     return(g)
 
 
@@ -338,7 +337,7 @@ def compute_link_prop(g,g_D):
         # - At least one reciprocal bw ij 
         if ni>0 and nj>0:
             list_events= np.concatenate((all_edges_i, all_edges_j))
-            list_events = sorted(list_events, key = lambda x: x[5])
+            list_events = sorted(list_events, key = lambda x: x[2])
             
             # Counting number of reciprocal 
             binary_reciprocal = ''.join(['0' if list_events[k+1][1]==list_events[k][1] else '1' for k in range(len(list_events)-1)])
@@ -355,7 +354,7 @@ def compute_link_prop(g,g_D):
         
         
         # -  Intertimes of the link ij
-        intertimes = [list_events[k+1][5]-list_events[k][5]  for k in range(len(list_events)-1)]
+        intertimes = [list_events[k+1][2]-list_events[k][2]  for k in range(len(list_events)-1)]
         
         # -  Balance
         be = max(ni,nj)/(ni+nj)
@@ -404,19 +403,18 @@ def measures(df_edges,XX):
         # FILTERING
     #-------------------------------------
     
-    # a. (node filtering) Removing nodes with no reciprocal ecents
-    g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)
-    
-    # b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
-    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] != 1.0)
-    
+#     a. (node filtering) Removing nodes with no reciprocal ecents
+#     g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)   
+
     
     # OLDD OKK ??? 
     #Filtering in and out degree (keep only nodes with degree >=1)
-    #g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
-    #g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
+    g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
+    g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
 
-    
+#     b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
+    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] != 1.0)
+     
     #-------------------------------------
     DATA = {}
     DATA['Nber_events'] = sum([g_filt.ep.n_events[v] for v in g_filt.edges()])
@@ -428,7 +426,12 @@ def measures(df_edges,XX):
     
     DATA['Burst_nodes'] = np.mean([g_filt.vp.burst[v] for v in g_filt.vertices()])
     DATA['Burst_edges'] = np.mean([g_filt.ep.burts[e] for e in g_filt.edges()])
-    
+    x=[g_filt.vp.burst[v] for v in g_filt.vertices() if not g_filt.vp.burst[v] ==np.nan]
+    frac_nan_B_nodes=x
+#     len(x)/DATA['Nber_nodes']
+    x=[g_filt.ep.burts[e] for e in g_filt.edges() if not g_filt.ep.burts[e] ==np.nan]
+    frac_nan_B_edges=x
+#     len(x)/DATA['Nber_links']
 #_______________________
     
     results = {}
@@ -446,4 +449,4 @@ def measures(df_edges,XX):
     results_df = pd.DataFrame.from_records([results])
     results_df.set_index("Method", inplace = True)
     
-    return results_df 
+    return results_df,frac_nan_B_nodes,frac_nan_B_edges
