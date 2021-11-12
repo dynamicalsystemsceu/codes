@@ -73,6 +73,8 @@ def to_graph(df_edges,from_ ,to,sec,minutes, hours, days):
     # - 3. probability of reciprocal links : 'proba_rec_link'
 
 def rec_nodes(g_D,g):
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2
     prop =[g_D.ep[p] for p in dict(g_D.edge_properties).keys()]
     
     
@@ -107,7 +109,7 @@ def rec_nodes(g_D,g):
         
         for neighbor in neighbors:
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[2])
+            events_node_nei = sorted(events[rows], key = lambda x: x[time_index])
             
             binary_rec = [0 if events_node_nei[k][0]==events_node_nei[k+1][0] 
                           else 1 for k in range(len(events_node_nei)-1)].count(1)
@@ -144,6 +146,8 @@ def burstiness(distri_intertimes):
     '''
     range: from -1 (deterministic) to +1 (super bursty)
     '''
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2
     
     mean = np.mean(distri_intertimes)
     std = np.std(distri_intertimes)
@@ -159,6 +163,8 @@ def burstiness(distri_intertimes):
     # - 2. intertime dist of the reciprocal event 'intertime_rec'
     
 def burst_rec_nodes(g_D,g):
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2
     
     prop =[g_D.ep[p] for p in dict(g_D.edge_properties).keys()]
     
@@ -177,9 +183,9 @@ def burst_rec_nodes(g_D,g):
     
         for neighbor in g.get_all_neighbors(node):
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[2])
+            events_node_nei = sorted(events[rows], key = lambda x: x[time_index])
             
-            intertime_rec = [events_node_nei[k+1][2]-events_node_nei[k][2]
+            intertime_rec = [events_node_nei[k+1][time_index]-events_node_nei[k][time_index]
                              for k in range(len(events_node_nei)-1) if
                              events_node_nei[k][0]!=events_node_nei[k+1][0]]
             
@@ -203,7 +209,8 @@ def burst_rec_nodes(g_D,g):
     # - 2. intertime dist of the non-reciprocal event: 'intertime_no_rec'
 
 def burst_no_rec_nodes(g_D,g):
-    
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2    
     prop =[g_D.ep[p] for p in dict(g_D.edge_properties).keys()]
     
     burst_no_rec = g.new_vertex_property("double") 
@@ -222,9 +229,9 @@ def burst_no_rec_nodes(g_D,g):
         for neighbor in g.get_all_neighbors(node):
         
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[2])
+            events_node_nei = sorted(events[rows], key = lambda x: x[time_index])
             
-            intertime_no_rec = [events_node_nei[k+1][2]-events_node_nei[k][2] 
+            intertime_no_rec = [events_node_nei[k+1][time_index]-events_node_nei[k][time_index] 
                                for k in range(len(events_node_nei)-1) 
                                  if events_node_nei[k][0]==events_node_nei[k+1][0]]
             
@@ -246,7 +253,8 @@ def burst_no_rec_nodes(g_D,g):
     # - 2. intertime dist of all event: 'intertime'
 
 def burst_nodes(g_D,g):
-    
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2    
     prop =[g_D.ep[p] for p in dict(g_D.edge_properties).keys()]
     
     burst = g.new_vertex_property("double") 
@@ -264,9 +272,9 @@ def burst_nodes(g_D,g):
         for neighbor in g.get_all_neighbors(node):
         
             rows, cols = np.where(events[:,:2] == neighbor)
-            events_node_nei = sorted(events[rows], key = lambda x: x[2])
-#             print(events[rows],'\n lalalalallala')
-            intertime = [events_node_nei[k+1][2]-events_node_nei[k][2] 
+            events_node_nei = sorted(events[rows], key = lambda x: x[time_index])
+#             print(events[rows],'\n lalalalallala'
+            intertime = [events_node_nei[k+1][time_index]-events_node_nei[k][time_index] 
                          for k in range(len(events_node_nei)-1)]
             
             list_burstiness += intertime
@@ -282,7 +290,8 @@ def burst_nodes(g_D,g):
 # calculating edge properties
 #---------------------------------------------
 def compute_link_prop(g,g_D):
-    
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2    
     '''
     Note the edge properties will be saved  on g!!! 
         ie. on the aggregate static network
@@ -337,7 +346,7 @@ def compute_link_prop(g,g_D):
         # - At least one reciprocal bw ij 
         if ni>0 and nj>0:
             list_events= np.concatenate((all_edges_i, all_edges_j))
-            list_events = sorted(list_events, key = lambda x: x[2])
+            list_events = sorted(list_events, key = lambda x: x[time_index])
             
             # Counting number of reciprocal 
             binary_reciprocal = ''.join(['0' if list_events[k+1][1]==list_events[k][1] else '1' for k in range(len(list_events)-1)])
@@ -354,7 +363,7 @@ def compute_link_prop(g,g_D):
         
         
         # -  Intertimes of the link ij
-        intertimes = [list_events[k+1][2]-list_events[k][2]  for k in range(len(list_events)-1)]
+        intertimes = [list_events[k+1][time_index]-list_events[k][time_index]  for k in range(len(list_events)-1)]
         
         # -  Balance
         be = max(ni,nj)/(ni+nj)
@@ -390,7 +399,7 @@ def measures(df_edges,XX):
 
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
     
-        
+    g_to_return=g_D.copy()    
     # Do stuff on nodes
     g = rec_nodes(g_D,g)
     g = burst_rec_nodes(g_D,g)
@@ -449,4 +458,4 @@ def measures(df_edges,XX):
     results_df = pd.DataFrame.from_records([results])
     results_df.set_index("Method", inplace = True)
     
-    return results_df,frac_nan_B_nodes,frac_nan_B_edges
+    return results_df,frac_nan_B_nodes,frac_nan_B_edges,g_to_return
