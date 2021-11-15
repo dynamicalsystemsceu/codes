@@ -13,6 +13,25 @@ import csv
 
 # FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
 
+
+def graph_filter_func(g,g_D):
+    # FILTERING
+    #-------------------------------------
+    
+#     a. (node filtering) Removing nodes with no reciprocal ecents
+#     g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)   
+
+    
+    # OLDD OKK ??? 
+    #Filtering in and out degree (keep only nodes with degree >=1)
+    g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
+    g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
+
+#     b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
+    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] > 1.0)
+     
+
+
 def to_graph(df_edges,from_ ,to,sec,minutes, hours, days):
     
     # Edge list
@@ -405,22 +424,8 @@ def measures(df_edges,XX):
     
     # Do stuff on edges
     g= compute_link_prop(g,g_D)
-        
-        # FILTERING
-    #-------------------------------------
-    
-#     a. (node filtering) Removing nodes with no reciprocal ecents
-#     g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)   
 
-    
-    # OLDD OKK ??? 
-    #Filtering in and out degree (keep only nodes with degree >=1)
-    g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
-    g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
-
-#     b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
-    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] != 1.0)
-     
+    g_filt=graph_filter_func(g,g_D)
     #-------------------------------------
     DATA = {}
     DATA['Nber_events'] = sum([g_filt.ep.n_events[v] for v in g_filt.edges()])
