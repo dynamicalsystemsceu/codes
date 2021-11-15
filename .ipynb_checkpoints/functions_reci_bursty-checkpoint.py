@@ -392,9 +392,9 @@ def compute_link_prop(g,g_D):
 
 def measures(df_edges,XX):
 
-    
 
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
+    
     
     g_to_return=g_D.copy()    
     # Do stuff on nodes
