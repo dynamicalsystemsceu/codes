@@ -11,9 +11,6 @@ import sys
 import collections
 import csv
 
-
-
-
 # FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
 
 def to_graph(df_edges,from_ ,to,sec,minutes, hours, days):
@@ -146,11 +143,12 @@ def burstiness(distri_intertimes):
     '''
     range: from -1 (deterministic) to +1 (super bursty)
     '''
-    properties = list(dict(g_D.edge_properties).keys())
-    time_index = properties.index('ts_sec')+2
-    
-    mean = np.mean(distri_intertimes)
-    std = np.std(distri_intertimes)
+    if len(distri_intertimes)>0:
+        mean = np.mean(np.array(distri_intertimes))
+        std = np.std(np.array(distri_intertimes))
+    else:
+        mean=np.nan
+        std=np.nan
     return((std-mean)/(std+mean))
 
 
@@ -196,8 +194,7 @@ def burst_rec_nodes(g_D,g):
         # Crating properties 
         g.vp.burst_rec[node] = burstiness(list_burstiness_rec)
         g.vp.intertime_rec[node] = np.array(node_intertimes_rec)
-        
-        
+
     return(g)
 
 
@@ -433,8 +430,13 @@ def measures(df_edges,XX):
     DATA['Proba_rec_event'] = np.mean([g_filt.ep.p_Erec[v] for v in g_filt.edges()])
     DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
     
-    DATA['Burst_nodes'] = np.mean([g_filt.vp.burst[v] for v in g_filt.vertices()])
+    DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
+    X_temp=np.array([g_filt.vp.burst[v] for v in g_filt.vertices()])
+#     print('Fraction OF NANs--------',np.sum(np.isnan(X_temp))
+    
     DATA['Burst_edges'] = np.mean([g_filt.ep.burts[e] for e in g_filt.edges()])
+#     print('edges---------',[g_filt.ep.burts[e] for e in g_filt.edges()])
+
     x=[g_filt.vp.burst[v] for v in g_filt.vertices() if not g_filt.vp.burst[v] ==np.nan]
     frac_nan_B_nodes=x
 #     len(x)/DATA['Nber_nodes']
