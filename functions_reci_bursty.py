@@ -415,7 +415,6 @@ def measures(df_edges,XX):
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
     
     
-    g_to_return=g_D.copy()    
     # Do stuff on nodes
     g = rec_nodes(g_D,g)
     g = burst_rec_nodes(g_D,g)
@@ -436,18 +435,9 @@ def measures(df_edges,XX):
     DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
     
     DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
-    X_temp=np.array([g_filt.vp.burst[v] for v in g_filt.vertices()])
-#     print('Fraction OF NANs--------',np.sum(np.isnan(X_temp))
     
     DATA['Burst_edges'] = np.mean([g_filt.ep.burts[e] for e in g_filt.edges()])
-#     print('edges---------',[g_filt.ep.burts[e] for e in g_filt.edges()])
 
-    x=[g_filt.vp.burst[v] for v in g_filt.vertices() if not g_filt.vp.burst[v] ==np.nan]
-    frac_nan_B_nodes=x
-#     len(x)/DATA['Nber_nodes']
-    x=[g_filt.ep.burts[e] for e in g_filt.edges() if not g_filt.ep.burts[e] ==np.nan]
-    frac_nan_B_edges=x
-#     len(x)/DATA['Nber_links']
 #_______________________
     
     results = {}
@@ -465,4 +455,4 @@ def measures(df_edges,XX):
     results_df = pd.DataFrame.from_records([results])
     results_df.set_index("Method", inplace = True)
     
-    return results_df,frac_nan_B_nodes,frac_nan_B_edges,g_to_return
+    return results_df
