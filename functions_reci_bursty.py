@@ -437,7 +437,7 @@ def measures(df_edges,XX):
     
     DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
     
-    DATA['Burst_edges'] = np.mean([g_filt.ep.burts[e] for e in g_filt.edges()])
+    DATA['Burst_edges'] = np.nanmean([g_filt.ep.burts[e] for e in g_filt.edges()])
 
 #_______________________
     

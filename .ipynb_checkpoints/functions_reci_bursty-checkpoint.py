@@ -27,7 +27,7 @@ def graph_filter_func(g,g_D):
     g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
     g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
 
-#     b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
+    # b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
     g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] > 1.0)
     return g_filt
      
@@ -437,7 +437,7 @@ def measures(df_edges,XX):
     
     DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
     
-    DATA['Burst_edges'] = np.mean([g_filt.ep.burts[e] for e in g_filt.edges()])
+    DATA['Burst_edges'] = np.nanmean([g_filt.ep.burts[e] for e in g_filt.edges()])
 
 #_______________________
     
