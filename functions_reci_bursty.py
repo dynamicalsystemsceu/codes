@@ -402,7 +402,6 @@ def compute_link_prop(g,g_D):
         
         # - Number of events between two nodes
         g.ep.n_events[e] = len(list_events)
-        
         ite +=1
     return g
 
@@ -412,7 +411,7 @@ def compute_link_prop(g,g_D):
 
 def measures(df_edges,XX):
 
-
+    df_edges.drop_duplicates(inplace=True)
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
     
     
@@ -455,5 +454,5 @@ def measures(df_edges,XX):
     
     results_df = pd.DataFrame.from_records([results])
     results_df.set_index("Method", inplace = True)
-    
+    #return g_filt.ep.p-rec
     return results_df
