@@ -412,6 +412,7 @@ def compute_link_prop(g,g_D):
 def measures(df_edges,XX):
 
     df_edges.drop_duplicates(inplace=True)
+    
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
     
     
@@ -441,18 +442,49 @@ def measures(df_edges,XX):
 #_______________________
     
     results = {}
-    results['Method'] = XX
+        # PROBA TO HAVE A RECIPROCAL EVENT
+    results['P(E_rec)'] = DATA['Proba_rec_event']
     # PROBA TO HAVE A RECIPROCAL LINK
     results['P(l_rec)'] = DATA['Proba_rec_edge']
-    # PROBA TO HAVE A RECIPROCAL EVENT
-    results['P(E_rec)'] = DATA['Proba_rec_event']
     # BURSTINESS FROM NODES POINT OF VIEW
     results['B_nodes'] = DATA['Burst_nodes']
     # BURSTINESS FROM EDGES POINT OF VIEW
     results['B_edges'] = DATA['Burst_edges']
+    results['data'] = XX
         
     
     results_df = pd.DataFrame.from_records([results])
-    results_df.set_index("Method", inplace = True)
-    #return g_filt.ep.p-rec
+    results_df.set_index("data", inplace = True)
     return results_df
+
+
+def table(g_filt):
+    
+    # TABLE
+    #-------------------------------------
+    DATA = {}
+    DATA['Nber_events'] = sum([g_filt.ep.n_events[v] for v in g_filt.edges()])
+    DATA['Nber_links'] = g_filt.num_edges()
+    DATA['Nber_nodes'] = g_filt.num_vertices() 
+    
+    DATA['Proba_rec_event'] = np.mean([g_filt.ep.p_Erec[v] for v in g_filt.edges()])
+    DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
+    
+    DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
+    
+    DATA['Burst_edges'] = np.nanmean([g_filt.ep.burts[e] for e in g_filt.edges()])
+
+    return(DATA)
+
+
+def make_time_col(df_edges,t_sec_var):
+    df_edges.loc[:,'t_minutes'] = df_edges.loc[:,t_sec_var].apply(lambda x: int(x/60))
+    df_edges.loc[:,'t_hours'] = df_edges.loc[:,t_sec_var].apply(lambda x: int(x/3600))
+    df_edges.loc[:,'t_days'] = df_edges.loc[:,t_sec_var].apply(lambda x: int(x/86400))
+    
+    for i_ in [1,2,5,10]:
+        for unit_, unit_val_ in zip(['day', 'week', 'month'],[1, 7, 28,]):
+            df_edges.loc[:,'t_{}{}'.format(i_,unit_)]= df_edges.loc[:,t_sec_var].apply(
+                lambda x: round(x/(86400*i_*unit_val_)))
+
+    return df_edges 
