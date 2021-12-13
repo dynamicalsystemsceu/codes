@@ -405,6 +405,124 @@ def compute_link_prop(g,g_D):
         ite +=1
     return g
 
+from statistics import *
+
+from scipy.optimize import curve_fit
+
+
+from scipy.optimize import curve_fit
+def compute_df_ck(df_edges):
+    [g,g_D]=to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
+    prop =[g_D.ep[p] for p in dict(g_D.edge_properties).keys()]
+    time_var_index=2    
+
+    N=g_D.num_vertices();
+    E=g_D.num_edges();
+
+    g_D_copy=g_D.copy()
+    remove_parallel_edges(g_D_copy)
+    store_new_yes_no=[];
+    store_final_k=[];
+    store_current_k=[]
+
+
+    for i in g_D.vertices():
+        current_k=np.zeros(N);
+
+        # take all its event
+        all_edges_i = np.array([e for e in g_D.get_all_edges(i,eprops=prop)])
+        all_edges_i = sorted(all_edges_i, key = lambda x: x[time_var_index]) # sort according to second, can put time_var_index
+        g_ego=Graph(directed=False);
+        g_ego.add_vertex(N)
+        for e in all_edges_i:
+            edge=e[0:2];
+            source = edge[0] 
+            if source ==i:
+
+                target = edge[1] 
+                final_k=g_D_copy.get_out_degrees([source])
+                store_final_k.append(final_k[0])
+
+                deg_old=g_ego.get_total_degrees([source])[0]
+
+                store_current_k.append(deg_old)
+                g_ego.add_edge(source,target);
+                remove_parallel_edges(g_ego)
+
+                deg_new=g_ego.get_total_degrees([source])[0]
+
+                added_=0
+
+                if deg_new>deg_old:
+                    added_=1
+
+                store_new_yes_no.append(added_)
+
+
+    df_ck=pd.DataFrame()
+    df_ck['final_k']=store_final_k
+    df_ck['current_k']=store_current_k
+    df_ck['new_yes_or_no']=store_new_yes_no
+
+
+    #----------------------------------------------------------------------------
+    # Setting up legends and log bins
+    #----------------------------------------------------------------------------
+    ln_N=int(round(np.log2(N),0))
+    bin_s=np.logspace(0,ln_N+1,ln_N+2,base=2)
+    leg_=[];xtick_s=[];
+    for x in range(len(bin_s)-1):
+        leg_.append('$k_{min}$ = '+str(bin_s[x]))
+        xtick_s.append(bin_s[x])
+    return df_ck,leg_,xtick_s,bin_s
+
+def plot_pk_vs_n_SINGLE(df,bin_s,choice_of_obj):
+    store_lines=[]
+    #----------------------------------------------------------------------------
+    # binning data by degree classes
+    #----------------------------------------------------------------------------
+    c_k=[]
+
+    store_n=[]
+    store_p_k=[]
+    
+    for i in range(len(bin_s)-1):
+    #     new_df=df['new_yes_or_no'][df['new_yes_or_no'].between(bin_s[i], bin_s[i+1], inclusive=False)]
+        df1=df[(bin_s[i] <= df['final_k']) & (df['final_k'] < bin_s[i+1])]
+
+        if df1.shape[0]>1:
+            store_n.append(bin_s[i])
+            store_p_k.append(df1['new_yes_or_no'].mean());
+
+
+    X=np.array(store_n)
+    Y=np.array(store_p_k)
+    # FITTING A CURVE
+    if len(Y)>3:
+
+        
+        x_new=np.linspace(1,1000,1000)
+        if choice_of_obj==1:
+            popt, _ = curve_fit(objective_1, X,Y)
+            a,b=popt
+            y_new = objective_1(x_new, a,b);xcol='b'
+            print(a,b)
+        else:
+            popt, _ = curve_fit(objective_2, X,Y)
+            a=popt[0]
+            y_new = objective_2(x_new,a);xcol='r'
+            print(a)
+                
+
+    return popt
+
+
+def objective_1(x, a,b):
+    return a/(x+a)+b
+def objective_2(x, a):
+    return a/(x+a)
+
+# FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
 
 
 
