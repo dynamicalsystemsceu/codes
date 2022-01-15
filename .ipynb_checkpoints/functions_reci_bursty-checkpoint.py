@@ -28,7 +28,7 @@ def graph_filter_func(g,g_D):
     g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
 
     # b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
-    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] > 1.0)
+    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] > 4.0)
     return g_filt
      
 
