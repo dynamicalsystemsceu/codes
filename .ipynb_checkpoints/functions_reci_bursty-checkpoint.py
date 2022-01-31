@@ -306,6 +306,48 @@ def burst_nodes(g_D,g):
 #---------------------------------------------
 # calculating edge properties
 #---------------------------------------------
+def compute_edge_n_events(g,g_D):
+    properties = list(dict(g_D.edge_properties).keys())
+    time_index = properties.index('ts_sec')+2    
+    '''
+    Note the edge properties will be saved  on g!!! 
+        ie. on the aggregate static network
+    
+    '''
+    
+    n_events= g.new_edge_property("double") 
+    g.ep.n_events= n_events
+    
+    
+    ite= 1
+    N=str(g.num_edges())
+    
+    
+    
+    for e in g.edges(): # for every edges in the g graph
+        
+#         print('edge',e)
+        
+        sys.stdout.write('\r' +'  edges n: '+ str(ite)+'/'+N )
+
+        i = e.source() # node i
+        j = e.target() # node j
+        
+        prop =[g_D.ep[p] for p in dict(g_D.edge_properties).keys()]
+        all_edges_i = np.array([e for e in g_D.get_all_edges(i) if e[1] ==j])
+        all_edges_j = np.array([e for e in g_D.get_all_edges(j) if e[1] ==i])
+        
+        ni = len(all_edges_i) 
+        nj = len(all_edges_j)
+
+  
+        # - Number of events between two nodes
+        g.ep.n_events[e] = ni+nj
+        ite +=1
+        
+    return g
+
+
 def compute_link_prop(g,g_D):
     properties = list(dict(g_D.edge_properties).keys())
     time_index = properties.index('ts_sec')+2    
@@ -334,7 +376,13 @@ def compute_link_prop(g,g_D):
     g.ep.p_Erec= p_Erec
     
     burts = g.new_edge_property("double") 
-    g.ep.burts= burts
+    g.ep.burst= burts
+    
+    burst_rec = g.new_edge_property("double") 
+    g.ep.burst_rec= burst_rec
+    
+    burst_no_rec = g.new_edge_property("double") 
+    g.ep.burst_no_rec= burst_no_rec
     
     n_events= g.new_edge_property("double") 
     g.ep.n_events= n_events
@@ -342,11 +390,20 @@ def compute_link_prop(g,g_D):
     intertime = g.new_edge_property("vector<double>") 
     g.ep.intertime= intertime
     
+    intertime_rec = g.new_edge_property("vector<double>") 
+    g.ep.intertime_rec= intertime_rec
+    
+    intertime_no_rec = g.new_edge_property("vector<double>") 
+    g.ep.intertime_no_rec= intertime_no_rec
+    
     
     ite= 1
     N=str(g.num_edges())
     
     for e in g.edges(): # for every edges in the g graph
+        
+#         print('edge',e)
+        
         sys.stdout.write('\r' +'  edges n: '+ str(ite)+'/'+N )
 
         i = e.source() # node i
@@ -377,10 +434,23 @@ def compute_link_prop(g,g_D):
             elif ni==0 and nj>0:
                 list_events= np.copy(all_edges_j)
             n_rec = 0 
+            
+            
+#         print('list_events',list_events)
         
         
         # -  Intertimes of the link ij
         intertimes = [list_events[k+1][time_index]-list_events[k][time_index]  for k in range(len(list_events)-1)]
+        
+        # - Intertimes of the link ij - RECIPROCAL
+        intertimes_reciprocal = [list_events[k+1][time_index]-list_events[k][time_index]  for k in range(len(list_events)-1) if list_events[k][0]!=list_events[k+1][0]]
+        
+#         print('intertimes_reciprocal',intertimes_reciprocal)
+        
+        # - Intertimes of the link ij - NON RECIPROCAL
+        intertimes_noreciprocal = [list_events[k+1][time_index]-list_events[k][time_index]  for k in range(len(list_events)-1) if list_events[k][0]==list_events[k+1][0]]
+        
+#         print('intertimes_noreciprocal',intertimes_noreciprocal)
         
         # -  Balance
         be = max(ni,nj)/(ni+nj)
@@ -395,10 +465,25 @@ def compute_link_prop(g,g_D):
         
         # - Intertime 
         g.ep.intertime[e] = np.array(intertimes)
+        g.ep.intertime_rec[e] = np.array(intertimes_reciprocal)
+        g.ep.intertime_no_rec[e] = np.array(intertimes_noreciprocal)
+        
         
         # - Burstiness
         burts = burstiness(intertimes)
-        g.ep.burts[e] = burts
+        g.ep.burst[e] = burts
+        
+        # - Burstiness rec
+        burts = burstiness(intertimes_reciprocal)
+        g.ep.burst_rec[e] = burts
+        
+#         print('g.ep.burst_rec[e]',g.ep.burst_rec[e])
+        
+        # - Burstiness no rec
+        burts = burstiness(intertimes_noreciprocal)
+        g.ep.burst_no_rec[e] = burts  
+        
+
         
         # - Number of events between two nodes
         g.ep.n_events[e] = len(list_events)
@@ -506,12 +591,10 @@ def plot_pk_vs_n_SINGLE(df,bin_s,choice_of_obj):
             popt, _ = curve_fit(objective_1, X,Y)
             a,b=popt
             y_new = objective_1(x_new, a,b);xcol='b'
-            print(a,b)
         else:
             popt, _ = curve_fit(objective_2, X,Y)
             a=popt[0]
             y_new = objective_2(x_new,a);xcol='r'
-            print(a)
                 
 
     return popt
@@ -525,12 +608,56 @@ def objective_2(x, a):
 # FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
 
 
+def df_filter_func(df_test,n_events_thres):
+#     from collections import Counter
+    df_test.drop_duplicates(inplace=True)
 
+    df_test_=df_test.copy()
+    df_test=df_test_.copy()
+    df_test['couples']=np.where(df_test['from'].astype('int')<df_test['to'].astype('int'), df_test['from'].astype('str')+'_'+df_test['to'].astype('str'), df_test['to'].astype('str')+'_'+df_test['from'].astype('str'))
+    df_orig=df_test.copy()
+    
+    from_=np.array(df_test['from'].astype('int'))
+    from_unique=np.unique(from_); dict_in_from={key_:'' for key_ in from_unique}
+    to_=np.array(df_test['to'].astype('int'))
+    to_unique=np.unique(to_);dict_in_to={key_:'' for key_ in to_unique}
+    
+    df_orig['from_has_in'] = np.array([x in dict_in_to.keys() for x in from_]).astype('int')
+    df_orig['to_has_out'] = np.array([x in dict_in_from.keys()  for x in to_]).astype('int')
+    df_orig['self_loop']=(from_==to_).astype('int')
+#--------------------------------------------------    
+    df_test = df_test.sort_values(by=['couples'])
+    couples_ = np.array(df_test['couples'])
+
+    ids= couples_.copy()
+    ind=np.where(~(ids[1:ids.shape[0]]==ids[0:ids.shape[0]-1]))
+    ind=ind[0]
+    career_lens=ind[1:len(ind)]-ind[0:len(ind)-1]
+    ind=[-1]+list(ind)
+    career_indices=ind + [len(couples_)-1]
+
+    values_ = np.array(career_indices[1:])-np.array(career_indices[0:-1])
+
+    keys_ = np.unique(couples_)
+
+    dict_events = {key_:value_ for key_,value_ in zip(keys_,values_)}
+
+    df_orig['n_events'] = df_orig['couples'].map(dict_events)
+#____________________________________
+#FILTER step
+#____________________________________
+    
+    df_orig=df_orig[(df_orig['from_has_in']>0)&(df_orig['to_has_out']>0)]
+    df_orig=df_orig[df_orig['n_events']>=n_events_thres]
+    df_orig=df_orig[df_orig['self_loop']==0]
+    df_orig=df_orig.iloc[:,0:18]
+
+    return(df_orig)
 
 def measures(df_edges,XX):
 
     df_edges.drop_duplicates(inplace=True)
-    
+    df_edges_calls= df_filter_func(df_edges_calls,n_events_thres) 
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
     
     
@@ -543,19 +670,8 @@ def measures(df_edges,XX):
     # Do stuff on edges
     g= compute_link_prop(g,g_D)
 
-    g_filt=graph_filter_func(g,g_D)
     #-------------------------------------
-    DATA = {}
-    DATA['Nber_events'] = sum([g_filt.ep.n_events[v] for v in g_filt.edges()])
-    DATA['Nber_links'] = g_filt.num_edges()
-    DATA['Nber_nodes'] = g_filt.num_vertices() 
-    
-    DATA['Proba_rec_event'] = np.mean([g_filt.ep.p_Erec[v] for v in g_filt.edges()])
-    DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
-    
-    DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
-    
-    DATA['Burst_edges'] = np.nanmean([g_filt.ep.burts[e] for e in g_filt.edges()])
+    DATA = table(g)
 
 #_______________________
     
@@ -590,7 +706,7 @@ def table(g_filt):
     
     DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
     
-    DATA['Burst_edges'] = np.nanmean([g_filt.ep.burts[e] for e in g_filt.edges()])
+    DATA['Burst_edges'] = np.nanmean([g_filt.ep.burst[e] for e in g_filt.edges()])
 
     return(DATA)
 
