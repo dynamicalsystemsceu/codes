@@ -10,26 +10,26 @@ import sys
 
 import collections
 import csv
-
+from copy import deepcopy
 # FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
 
 
-def graph_filter_func(g,g_D):
-    # FILTERING
-    #-------------------------------------
+# def graph_filter_func(g,g_D):
+#     # FILTERING
+#     #-------------------------------------
     
-#     a. (node filtering) Removing nodes with no reciprocal ecents
-#     g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)   
+# #     a. (node filtering) Removing nodes with no reciprocal ecents
+# #     g_filt = GraphView(g, vfilt=lambda v: g.vp.n_rec_event[v] > 0.0)   
 
     
-    # OLDD OKK ??? 
-    #Filtering in and out degree (keep only nodes with degree >=1)
-    g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
-    g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
+#     # OLDD OKK ??? 
+#     #Filtering in and out degree (keep only nodes with degree >=1)
+#     g_D_filt = GraphView(g_D, vfilt=lambda v: (v.out_degree()>=1)&(v.in_degree()>=1))
+#     g_filt = GraphView(g, vfilt=lambda v: (v in g_D_filt.vertices())==True)
 
-    # b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
-    g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] > 4.0)
-    return g_filt
+#     # b. (edge filtering) Removing unique edges bw two nodes (ie. if only one event bw two nodes)
+#     g_filt = GraphView(g_filt, efilt=lambda e: g_filt.ep.n_events[e] > 4.0)
+#     return g_filt
      
 
 
@@ -608,26 +608,26 @@ def objective_2(x, a):
 # FUNCTION WHICH CREATES THE AGGREGATED GRAPH: G IS UNDIRECTED AND G_D IS DIRECTED
 
 
-def df_filter_func(df_test,n_events_thres):
-#     from collections import Counter
-    df_test.drop_duplicates(inplace=True)
-
-    df_test_=df_test.copy()
-    df_test=df_test_.copy()
-    df_test['couples']=np.where(df_test['from'].astype('int')<df_test['to'].astype('int'), df_test['from'].astype('str')+'_'+df_test['to'].astype('str'), df_test['to'].astype('str')+'_'+df_test['from'].astype('str'))
-    df_orig=df_test.copy()
+from copy import deepcopy
+def df_filter_func(df_test,n_events_thres): 
     
-    from_=np.array(df_test['from'].astype('int'))
-    from_unique=np.unique(from_); dict_in_from={key_:'' for key_ in from_unique}
-    to_=np.array(df_test['to'].astype('int'))
+    df_toreturn = deepcopy(df_test.drop_duplicates())
+    
+    df_toreturn['couples']=np.where(df_toreturn['from'].astype('int')<df_toreturn['to'].astype('int'),
+                                df_toreturn['from'].astype('str')+'_'+df_toreturn['to'].astype('str'),
+                                df_toreturn['to'].astype('str')+'_'+df_toreturn['from'].astype('str'))
+    
+    from_ =np.array(df_toreturn['from'].astype('int'))
+    from_unique= np.unique(from_); dict_in_from={key_:'' for key_ in from_unique}
+    to_=np.array(df_toreturn['to'].astype('int'))
     to_unique=np.unique(to_);dict_in_to={key_:'' for key_ in to_unique}
     
-    df_orig['from_has_in'] = np.array([x in dict_in_to.keys() for x in from_]).astype('int')
-    df_orig['to_has_out'] = np.array([x in dict_in_from.keys()  for x in to_]).astype('int')
-    df_orig['self_loop']=(from_==to_).astype('int')
-#--------------------------------------------------    
-    df_test = df_test.sort_values(by=['couples'])
-    couples_ = np.array(df_test['couples'])
+    df_toreturn['from_has_in'] = np.array([x in dict_in_to.keys() for x in from_]).astype('int')
+    df_toreturn['to_has_out'] = np.array([x in dict_in_from.keys()  for x in to_]).astype('int')
+    df_toreturn['self_loop']=(from_==to_).astype('int')
+    #--------------------------------------------------    
+    df_toreturn = df_toreturn.sort_values(by=['couples'])
+    couples_ = np.array(df_toreturn['couples'])
 
     ids= couples_.copy()
     ind=np.where(~(ids[1:ids.shape[0]]==ids[0:ids.shape[0]-1]))
@@ -642,22 +642,29 @@ def df_filter_func(df_test,n_events_thres):
 
     dict_events = {key_:value_ for key_,value_ in zip(keys_,values_)}
 
-    df_orig['n_events'] = df_orig['couples'].map(dict_events)
-#____________________________________
-#FILTER step
-#____________________________________
+    df_toreturn['n_events'] = df_toreturn['couples'].map(dict_events)
+
+    #---------------------------------------
+    #              FILTER step
+    #---------------------------------------
     
-    df_orig=df_orig[(df_orig['from_has_in']>0)&(df_orig['to_has_out']>0)]
-    df_orig=df_orig[df_orig['n_events']>=n_events_thres]
-    df_orig=df_orig[df_orig['self_loop']==0]
-    df_orig=df_orig.iloc[:,0:18]
+    df_toreturn=df_toreturn[(df_toreturn['from_has_in']>0)&(df_toreturn['to_has_out']>0)]
+    df_toreturn=df_toreturn[df_toreturn['n_events']>=n_events_thres]
+    df_toreturn=df_toreturn[df_toreturn['self_loop']==0]
+    df_toreturn=df_toreturn[df_test.columns]
+    df_toreturn = df_toreturn.sort_values(by=['t_second'])
 
-    return(df_orig)
+    return(df_toreturn)
 
-def measures(df_edges,XX):
+def measures(df_edges,XX,n_events_thres):
 
     df_edges.drop_duplicates(inplace=True)
-    df_edges_calls= df_filter_func(df_edges_calls,n_events_thres) 
+    if len(df_edges.columns)==3:
+        df_edges.columns=['from', 'to', 't_second']
+    df_edges =make_time_col(df_edges,'t_second')
+
+    df_edges= df_filter_func(df_edges,n_events_thres) 
+    
     g,g_D = to_graph(df_edges,'from','to','t_second','t_minutes','t_hours','t_days')
     
     
