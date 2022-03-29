@@ -573,7 +573,8 @@ def plot_pk_vs_n_SINGLE(df,bin_s,choice_of_obj):
     
     for i in range(len(bin_s)-1):
     #     new_df=df['new_yes_or_no'][df['new_yes_or_no'].between(bin_s[i], bin_s[i+1], inclusive=False)]
-        df1=df[(bin_s[i] <= df['final_k']) & (df['final_k'] < bin_s[i+1])]
+#         df1=df[(bin_s[i] <= df['final_k']) & (df['final_k'] < bin_s[i+1])]
+        df1=df[(bin_s[i] <= df['current_k']) & (df['current_k'] < bin_s[i+1])]
 
         if df1.shape[0]>1:
             store_n.append(bin_s[i])
@@ -708,8 +709,11 @@ def table(g_filt):
     DATA['Nber_links'] = g_filt.num_edges()
     DATA['Nber_nodes'] = g_filt.num_vertices() 
     
-    DATA['Proba_rec_event'] = np.mean([g_filt.ep.p_Erec[v] for v in g_filt.edges()])
-    DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
+    DATA['Proba_rec_event'] = np.nanmean([g_filt.ep.p_Erec[v] for v in g_filt.edges()])
+    if g_filt.num_edges()>0:
+        DATA['Proba_rec_edge'] = sum([1 for v in g_filt.edges() if g_filt.ep.p_Erec[v]!= 0]) / g_filt.num_edges()
+    else:
+        DATA['Proba_rec_edge'] = np.nan
     
     DATA['Burst_nodes'] = np.nanmean([g_filt.vp.burst[v] for v in g_filt.vertices()])
     

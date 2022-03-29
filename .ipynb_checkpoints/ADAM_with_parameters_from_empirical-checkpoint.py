@@ -104,7 +104,8 @@ def create_ADAM_elist(N,E,k_in,k_out,para1,para2):
         for i in range(len(active_nodes)): #Loop over active nodes (NOT all nodes)
             source=active_nodes[i]
             degree_node=g_last.get_total_degrees([source])
-
+            if (para1+degree_node)==0:
+                print(para1,para2,degree_node,(para2+(para1/(para1+degree_node))))
             if random.rand()<=(para2+(para1/(para1+degree_node))): # with prob=1/(1+k); choose a random neighbour
                 target = np.random.choice(range(N),size= 1, p = p ) # select m nodes according to the probability vector p
                 target=target[0]

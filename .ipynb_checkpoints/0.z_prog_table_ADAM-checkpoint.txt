@@ -1,4 +1,2 @@
-dataset FINISHED=calls----40.45
-dataset starting=sms----40.45
-dataset FINISHED=sms----215.01
-dataset starting=college----215.01
+dataset starting=events_considered, n_thresh, dataset--10000, 3, sms----131.47
+dataset starting=events_considered, n_thresh, dataset--10000, 3, college----232.06
