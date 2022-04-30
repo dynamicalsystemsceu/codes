@@ -1,2 +1,0 @@
-dataset starting=events_considered, n_thresh, dataset--10000, 3, sms----131.47
-dataset starting=events_considered, n_thresh, dataset--10000, 3, college----232.06

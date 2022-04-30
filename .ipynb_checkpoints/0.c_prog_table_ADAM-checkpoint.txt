@@ -1,0 +1,12 @@
+dataset starting=events_considered, n_thresh, dataset--50000, 3, calls----18.88
+dataset FINISHED=calls----75.9
+dataset starting=events_considered, n_thresh, dataset--50000, 3, sms----217.8
+dataset FINISHED=sms----288.98
+dataset starting=events_considered, n_thresh, dataset--50000, 3, college----581.06
+dataset FINISHED=college----3915.69
+dataset starting=events_considered, n_thresh, dataset--50000, 3, email----4205.42
+dataset FINISHED=email----6940.99
+dataset starting=events_considered, n_thresh, dataset--50000, 3, retweets----7221.18
+dataset FINISHED=retweets----11281.04
+dataset starting=events_considered, n_thresh, dataset--50000, 3, mentions----11577.53
+dataset FINISHED=mentions----14826.61
